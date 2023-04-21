@@ -90,9 +90,9 @@ guest_username=vsftpd
 ```
 The `/etc/vsftpd/ftpd.passwd` file stores virtual users and their passwords.
 
-If there is no code, then it is not required during authentication. But if we want the user to have a password then it is created as follows: (let's assume the password is `pavlos`):
+If there is no password, then it is not required during authentication. But if we want the user to have a password then it is created as follows: (let's assume the user is `upload`). With `-d` appends. With `-cd` creates and appends.
 ```Shell
-openssl passwd pavlos
+htpasswd -d /etc/vsftpd/ftpd.passwd upload
 ```
 Below is the file `/etc/vsftpd/ftpd.passwd` with the virtual user `engineer` without password and the user `upload` with password `pavlos`:
 ```INI

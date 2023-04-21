@@ -59,7 +59,7 @@ useradd -N -s /bin/false -d /home/vsftpd vsftpd
 
 ## Επεξεργασία αρχείων ρυθμίσεων
 
-Το αρχείο `/apt/pam.d/vsftpd` καθορίζει με ποιο τρόπο θα πραγματοποιείται η αυθεντικοποίηση των εικονικών χρηστών του vsftpd εξυπηρετητή:
+Το αρχείο `/etc/pam.d/vsftpd` καθορίζει με ποιο τρόπο θα πραγματοποιείται η αυθεντικοποίηση των εικονικών χρηστών του vsftpd εξυπηρετητή:
 ```INI
 auth required pam_pwdfile.so pwdfile /etc/vsftpd/ftpd.passwd
 account required pam_permit.so
@@ -77,7 +77,7 @@ xferlog_enable=YES
 # Χρήστης vsftpd
 nopriv_user=vsftpd
 chroot_local_user=YES
-# Αρχείο ρυθμίσεων /apt/pam.d/vsftpd
+# Αρχείο ρυθμίσεων /etc/pam.d/vsftpd
 pam_service_name=vsftpd
 utf8_filesystem=YES
 hide_ids=YES

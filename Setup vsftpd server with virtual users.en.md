@@ -62,7 +62,7 @@ useradd -N -s /bin/false -d /home/vsftpd vsftpd
 
 ## Edit configuration files
 
-The `/apt/pam.d/vsftpd` file defines how to authenticate virtual users of the vsftpd server:
+The `/etc/pam.d/vsftpd` file defines how to authenticate virtual users of the vsftpd server:
 ```INI
 auth required pam_pwdfile.so pwdfile /etc/vsftpd/ftpd.passwd
 account required pam_permit.so
@@ -79,7 +79,7 @@ xferlog_enable=YES
 # User vsftpd
 nopriv_user=vsftpd
 chroot_local_user=YES
-# Configuration file /apt/pam.d/vsftpd
+# Configuration file /etc/pam.d/vsftpd
 pam_service_name=vsftpd
 utf8_filesystem=YES
 hide_ids=YES

@@ -1,122 +1,142 @@
-Guide: Setup OpenVPN layer 2 (TAP) and layer 3 (TUN), bridged
-=============================================================
+# Guide: Setup OpenVPN layer 2 (TAP) and layer 3 (TUN), bridged
 
 
-What we will do
----------------
+## What we will do
+
 - Setup a TAP VPN to play LAN games.
 - Setup a TUN VPN to connect android phones.
 - TAP and TUN server is the same machine.
 - Machines in TAP VPN communicate with machines in TUN VPN and vice-versa.
 
 
-Why TAP
--------
+## Why TAP
+
 Layer 2 is MAC address level.
+
 There is no other way to play LAN games with your friends in the world.
-Unfortunately with layer 3 there is no multicast in x.x.x.255.
-Layer 3 is IP address level. Why, there is no multicast on IP level, ask OpenVPN.
+
+Unfortunately with layer 3 there is no multicast in `x.x.x.255`.
+
+Layer 3 is IP address level.
 
 
-Networks
---------
+## Networks
+
 TAP and TUN server is the same machine.
-OpenVPN server belongs to LAN 10.0.0.0/24 and has address 10.0.0.2.
-All machines in the same LAN with OpenVPN server (10.0.0.0/24) CAN be accessible from TAP VPN WITHOUT the need to run OpenVPN TAP client (TVs, printers, smart light switches, etc included).
-All machines in the same LAN with OpenVPN server (10.0.0.0/24), if not run OpenVPN TUN client, CANNOT be accessible from TUN VPN. If we want be accessible without OpenVPN TUN client, we do the procedure at the end of article.
-All machines NOT in the same LAN with OpenVPN server (10.0.0.0/24) must run OpenVPN client.
-All machines NOT in the same LAN with OpenVPN server (10.0.0.0/24), if they belong in a LAN, this LAN must not be 10.0.0.0/24 or 10.8.0.0/24. An acceptable LAN can be 192.168.1.0/24.
-All machines NOT in the same LAN with OpenVPN server (10.0.0.0/24), after TAP VPN connection, have an extra IP address 10.0.0.0/24 in TAP VPN, keeping their original LAN address 192.168.1.0/24.
-All machines which run VPN TUN client, after TUN VPN connection, have an extra IP address 10.8.0.0/24 in TUN VPN, keeping their original LAN address 192.168.1.0/24.
+
+OpenVPN server belongs to LAN `10.0.0.0/24` and has address `10.0.0.2`.
+
+All machines in the same LAN with OpenVPN server (`10.0.0.0/24`) **can** be accessible from TAP VPN **without** the need to run OpenVPN TAP client (TVs, printers, smart light switches, etc included).
+
+All machines in the same LAN with OpenVPN server (`10.0.0.0/24`), if not run OpenVPN TUN client, **cannot** be accessible from TUN VPN. If we want be accessible without OpenVPN TUN client, we do the procedure at the end of article.
+
+All machines **not** in the same LAN with OpenVPN server (`10.0.0.0/24`) must run OpenVPN client.
+
+All machines **not** in the same LAN with OpenVPN server (`10.0.0.0/24`), if they belong in a LAN, this LAN must not be `10.0.0.0/24` or `10.8.0.0/24`. An acceptable LAN can be `192.168.1.0/24`.
+
+All machines **not** in the same LAN with OpenVPN server (`10.0.0.0/24`), after TAP VPN connection, have an extra IP address `10.0.0.0/24` in TAP VPN, keeping their original LAN address `192.168.1.0/24`.
+
+All machines which run VPN TUN client, after TUN VPN connection, have an extra IP address `10.8.0.0/24` in TUN VPN, keeping their original LAN address `192.168.1.0/24`.
 
 
+## Install of required packages
+
+We install the required packages. Installation refer to Debian or Debian derivatives.
+```Shell
+apt install openssl openvpn bridge-utils net-tools
+```
 
 
-To be connected in OpenVPN
---------------------------
+## To be connected in OpenVPN
+
 Every client and the server have a certification signed from a certification authority.
+
 Also they have a configuration file which all of them must have many settings the same, or else connection will not be established.
 
 
-WARNING!
---------
+## Warning about OpenSSL!
+
 Use the latest version of OpenSSL to create certifications (procedures follow).
+
 Download and use OpenSSL for Windows because Linux (specially Debian for ARM CPUs) has older OpenSSL version.
+
 Newer OpenSSL can reject certificates issued with older OpenSSL for some security reason (I suffer from this).
 
 
-Creating certification authority
---------------------------------
+## Creating certification authority
+
 To create certification of certification authority, you must run the commands:
-.......
+```Shell
 openssl genrsa -des3 -out ca.key 4096
 openssl req -new -x509 -utf8 -days 36500 -key ca.key -out ca.crt
-.......
-and we have public ca.crt and private key ca.key.
+```
+and we have public `ca.crt` and private key `ca.key`.
 
 
-Creating server's certification
--------------------------------
-We must create a file openssl.x509.server.conf with contents:
-_._._._
+## Creating server's certification
+
+We must create a file `openssl.x509.server.conf` with contents:
+```Shell
 # These extensions are added when 'ca' signs a request.
 keyUsage = digitalSignature, keyEncipherment
 extendedKeyUsage=serverAuth
--.-.-.-
+```
 
 To create certification of server, you must run the commands:
-.......
+```Shell
 openssl genrsa -out server.key 4096
 openssl req -new -utf8 -key server.key -out server.csr
 openssl x509 -req -days 36500 -in server.csr -CA ca.crt -CAkey ca.key -set_serial 01 -out server.crt -extfile openssl.x509.server.conf
 rm server.csr
-.......
-and we have public server.crt and private key server.key.
-WARNING! OpenSSL does not require Common Name (CA) for certificate but OpenVPN requires it. So, you MUST give a Common Name!
+```
+and we have public `server.crt` and private key `server.key`.
+
+**Warning!** OpenSSL does not require Common Name (CA) for certificate but OpenVPN requires it. So, you **must** give a Common Name!
 
 
-Creating each client's certification
-------------------------------------
-We must create a file openssl.x509.client.conf with contents:
-_._._._
+## Creating each client's certification
+
+We must create a file `openssl.x509.client.conf` with contents:
+```Shell
 # These extensions are added when 'ca' signs a request.
 keyUsage = digitalSignature
 extendedKeyUsage=clientAuth
--.-.-.-
+```
 
 To create certification of each client, you must run the commands for every client:
-.......
+```Shell
 openssl genrsa -out client.key 4096
 openssl req -new -utf8 -key client.key -out client.csr
 openssl x509 -req -days 36500 -in client.csr -CA ca.crt -CAkey ca.key -set_serial 01 -out client.crt -extfile openssl.x509.client.conf
 rm client.csr
-.......
-and we have public client.crt and private key client.key.
-WARNING! OpenSSL does not require Common Name (CA) for certificate but OpenVPN requires it. So, you MUST give a Common Name!
+```
+and we have public `client.crt` and private key `client.key`.
+
+**Warning!** OpenSSL does not require Common Name (CA) for certificate but OpenVPN requires it. So, you **must** give a Common Name!
 
 
-Creating the tls-auth key
--------------------------
+## Creating the tls-auth key
+
 To create tls-auth key, which provides more security, you must run the commands:
-.......
+```Shell
 openvpn --genkey --secret ta.key
-.......
-and we have the private key ta.key.
+```
+and we have the private key `ta.key`.
 
 
-Creating Diffie-Hellman file
-----------------------------
+## Creating Diffie-Hellman file
+
 To create Diffie-Hellman file at 4096 bits, you must run the commands:
-.......
+```Shell
 openssl dhparam -out dh4096.pem 4096
-.......
-and we have -AFTER A LOT OF TIME- file dh4096.pem.
+```
+and we have -after **a lot** of time- file `dh4096.pem`.
 
 
-Setting up the TAP server
--------------------------
-We modify the network configuration file /etc/network/interfaces as folling:
-_._._._
+## Setting up the TAP server
+
+We modify the network configuration file `/etc/network/interfaces` as folling:
+```INI
 #auto eth0
 ##iface eth0 inet dhcp
 #iface eth0 inet static
@@ -133,29 +153,30 @@ gateway 10.0.0.1
 network 10.0.0.0
 broadcast 10.0.0.255
 bridge_ports eth0
--.-.-.-
-Disable everything related with eth0 and enable network bridge br0 with the same options.
-On option bridge_ports we don't put tap0 (tap0 is the network interface created from OpenVPN) because OpenVPN hasn't executed yet: Network must be setup before OpenVPN.
+```
+Disable everything related with `eth0` and enable network bridge `br0` with the same options.
 
-Copy files ca.crt dh4096.pem server.crt server.key ta.key to folder /etc/openvpn, with ownership root:root and permissions 400.
+On option `bridge_ports` we don't put `tap0` (`tap0` is the network interface created from OpenVPN) because OpenVPN hasn't executed yet: Network must be setup before OpenVPN.
 
-Create an EXECUTABLE file  /etc/openvpn/openvpn_up with contents:
-_._._._
+Copy files `ca.crt`, `dh4096.pem`, `server.crt`, `server.key, `ta.key` to folder `/etc/openvpn`, with ownership `root:root` and permissions `400`.
+
+Create an **executable** file `/etc/openvpn/openvpn_up` with contents:
+```bash
 #!/bin/bash
 brctl addif br0 $1
 ifconfig $1 up
--.-.-.-
-This file, when OpenVPN create network interface tap0 ($1), connects this network interface under the bridge br0. Then up network interface tap0.
+```
+This file, when OpenVPN create network interface `tap0` (`$1`), connects this network interface under the bridge `br0`. Then up network interface `tap0`.
 
-In newer linux releases in order to avoid installation of package net-tools (ifconfig) we use the ip command of basic package iproute2 and the previous script becomes:
-_._._._
+In newer linux releases in order to avoid installation of package `net-tools` (for the `ifconfig`) we use the `ip` command of basic package `iproute2` and the previous script becomes:
+```bash
 #!/bin/bash
 ip link set $1 master br0
 ip link set $1 up
--.-.-.-
+```
 
-Modify or create the file /etc/openvpn/server_tap.conf with following contents (comments stripped):
-_._._._
+Modify or create the file `/etc/openvpn/server_tap.conf` with following contents (comments stripped):
+```INI
 port 1194
 proto udp
 dev tap
@@ -181,20 +202,20 @@ explicit-exit-notify 1
 script-security 2
 up openvpn_up
 ;down openvpn_down          # no need
--.-.-.-
+```
 
 Comments:
-- OpenVPN TAP server informs all OpenVPN TAP clients for VPN TUN network 10.8.0.0.
+- OpenVPN TAP server informs all OpenVPN TAP clients for VPN TUN network `10.8.0.0`.
 
-reboot.
+Reboot.
 
 
-Setting up the TUN server
--------------------------
-We use the same files ca.crt dh4096.pem server.crt server.key ta.key with TAP server, so no changes.
+## Setting up the TUN server
 
-Modify or create the file /etc/openvpn/server_tun.conf with following contents (comments stripped):
-_._._._
+We use the same files `ca.crt`, `dh4096.pem, `server.crt, `server.key, `ta.key` with TAP server, so no changes.
+
+Modify or create the file `/etc/openvpn/server_tun.conf` with following contents (comments stripped):
+```INI
 port 1195
 proto udp
 dev tun
@@ -217,46 +238,47 @@ persist-tun
 status openvpn-status.log
 verb 3
 explicit-exit-notify 1
--.-.-.-
+```
 
 Comments:
-- We use the next port for TUN VPN 1195.
-- We do not run executable file which bridges to br0 the tun0 with tap0 and eth0, because tun0 is layer 3 and cannot bridged.
-- OpenVPN TUN server informs all OpenVPN TUN clients for VPN TAP network 10.0.0.0.
+- We use the next port for TUN VPN `1195`.
+- We do not run executable file which bridges to `br0` the `tun0` with `tap0` and `eth0`, because `tun0` is layer 3 and cannot bridged.
+- OpenVPN TUN server informs all OpenVPN TUN clients for VPN TAP network `10.0.0.0`.
 
-As I say before, machines in the same LAN with server, do not run VPN TAP client, so they do not know about TUN network (10.8.0.0/24).
-In order, for packages, to arrive in their destination, packages which arrive on server from machines above, with destination a machine of VPN TUN network (10.8.0.0/24) and vice versa, IP forwarding must be enabled on server.
+As I say before, machines in the same LAN with server, do not run VPN TAP client, so they do not know about TUN network (`10.8.0.0/24`).
+
+In order, for packages, to arrive in their destination, packages which arrive on server from machines above, with destination a machine of VPN TUN network (`10.8.0.0/24`) and vice versa, IP forwarding must be enabled on server.
+
 We check IP forwarding with command:
-.......
+```Shell
 cat /proc/sys/net/ipv4/ip_forward
-.......
+```
 If result is 1 (yes) ok. If result is 0 (no) we must enable IP forwarding.
-Edit file /etc/sysctl.conf and uncomment line:
-_._._._
 
+Edit file `/etc/sysctl.conf` and uncomment line:
+```INI
 net.ipv4.ip_forward=1
-_._._._
+```
 save file and inform system for change with command:
-.......
+```Shell
 sysctl -p
-.......
+```
 Instead of that, from version Debian 13 and forward, we create a different file and inform the system:
-.......
+```Shell
 echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/90-ip-forward.conf
 sysctl --system
-.......
-
-
+```
 Reboot.
 
 
-Setting up the TAP client
--------------------------
-Copy files ca.crt dh4096.pem client.crt client.key ta.key to folder /etc/openvpn, with ownership root:root and permissions 400.
+## Setting up the TAP client
+
+Copy files `ca.crt`, `dh4096.pem, `client.crt, `client.key`, `ta.key`, to folder `/etc/openvpn`, with ownership `root:root` and permissions `400`.
+
 If we have windows in client, do something similar. It is easier.
 
-Modify or create the file /etc/openvpn/client.conf with following contents (comments stripped):
-_._._._
+Modify or create the file `/etc/openvpn/client.conf` with following contents (comments stripped):
+```INI
 remote mydomain.myftp.org 1194
 client
 proto udp
@@ -271,10 +293,10 @@ persist-tun
 status openvpn-status.log
 verb 3
 explicit-exit-notify 1
--.-.-.-
+```
 
 Or else we can insert inline the certificates inside configuration file, so contents are:
-_._._._
+```INI
 remote mydomain.myftp.org 1194
 client
 proto udp
@@ -307,18 +329,18 @@ persist-tun
 status openvpn-status.log
 verb 3
 explicit-exit-notify 1
--.-.-.-
+```
 
 Run the OpenVPN client service.
 
 
-Setting up the TUN client
--------------------------
-Copy files ca.crt dh4096.pem client.crt client.key ta.key to folder /etc/openvpn, with ownership root:root and permissions 400.
+## Setting up the TUN client
+
+Copy files `ca.crt`, `dh4096.pem`, `client.crt, `client.key`, `ta.key` to folder `/etc/openvpn`, with ownership `root:root` and permissions `400`.
 If we have windows in client, do something similar. It is easier.
 
-Modify or create the file /etc/openvpn/client.conf with following contents (comments stripped):
-_._._._
+Modify or create the file `/etc/openvpn/client.conf` with following contents (comments stripped):
+```INI
 remote myserver.myftp.org 1195
 client
 proto udp
@@ -333,17 +355,21 @@ persist-tun
 status openvpn-status.log
 verb 3
 explicit-exit-notify 1
--.-.-.-
+```
 
 Or else we can insert inline the certificates inside configuration file, as we do for TAP client.
 
 Run the OpenVPN client service.
 
 
-Connecting machines in the same LAN with server, which does not run TAP or TUN client, with VPN TUN
----------------------------------------------------------------------------------------------------
+## Connecting machines in the same LAN with server, which does not run TAP or TUN client, with VPN TUN
+
 If machine runs Windows, execute the following command:
-.......
+```Shell
 route -p add 10.8.0.0 mask 255.255.255.0 10.0.0.2
-.......
-If machine runs Linux, something similar.
+```
+If machine runs Linux, append in the network configuration file `/etc/network/interfaces` at the end of block `auto br0` the following lines:
+```INI
+up ip route add 10.8.0.0/24 via 10.0.0.2
+down ip route del 10.8.0.0/24 via 10.0.0.2
+```

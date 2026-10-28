@@ -47,16 +47,19 @@ Layer 3 είναι επίπεδο IP. Τώρα γιατί δε γίνεται mu
 Δημιουργώντας το πιστοποιητικό της αρχής πιστοποίησης
 -----------------------------------------------------
 Για να δημιουργηθεί το πιστοποιητικό της αρχής πιστοποίησης εκτελούμε τις εντολές:
+
 .......
 openssl genrsa -des3 -out ca.key 4096
 openssl req -new -x509 -utf8 -days 36500 -key ca.key -out ca.crt
 .......
+
 και προκύπτει το δημόσιο ca.crt και το ιδιωτικό ca.key κλειδί.
 
 
 Δημιουργώντας το πιστοποιητικό του εξυπηρετητή
 ----------------------------------------------
 Εδώ απαιτείται η δημιουργία ενός αρχείου openssl.x509.server.conf με περιεχόμενα:
+
 _._._._
 # These extensions are added when 'ca' signs a request.
 keyUsage = digitalSignature, keyEncipherment
@@ -64,12 +67,14 @@ extendedKeyUsage=serverAuth
 -.-.-.-
 
 Για να δημιουργηθεί το πιστοποιητικό του εξυπηρετητή εκτελούμε τις εντολές:
+
 .......
 openssl genrsa -out server.key 4096
 openssl req -new -utf8 -key server.key -out server.csr
 openssl x509 -req -days 36500 -in server.csr -CA ca.crt -CAkey ca.key -set_serial 01 -out server.crt -extfile openssl.x509.server.conf
 rm server.csr
 .......
+
 και προκύπτει το δημόσιο server.crt και το ιδιωτικό server.key κλειδί.
 ΠΡΟΣΟΧΗ! Το OpenSSL δεν απαιτεί να συμπληρωθεί κάποιο Common Name (CA) στα στοιχεία του πιστοποιητικού. Το OpenVPN όμως το απαιτεί. Οπότε συμπληρώστε το υποχρεωτικά!
 
@@ -84,12 +89,14 @@ extendedKeyUsage=clientAuth
 -.-.-.-
 
 Για να δημιουργηθεί το πιστοποιητικό του κάθε πελάτη εκτελούμε για κάθε πελάτη τις εντολές:
+
 .......
 openssl genrsa -out client.key 4096
 openssl req -new -utf8 -key client.key -out client.csr
 openssl x509 -req -days 36500 -in client.csr -CA ca.crt -CAkey ca.key -set_serial 01 -out client.crt -extfile openssl.x509.client.conf
 rm client.csr
 .......
+
 και προκύπτει το δημόσιο client.crt και το ιδιωτικό client.key κλειδί.
 ΠΡΟΣΟΧΗ! Το OpenSSL δεν απαιτεί να συμπληρωθεί κάποιο Common Name (CA) στα στοιχεία του πιστοποιητικού. Το OpenVPN όμως το απαιτεί. Οπότε συμπληρώστε το υποχρεωτικά!
 
@@ -97,9 +104,11 @@ rm client.csr
 Δημιουργώντας το tls-auth κλειδί
 --------------------------------
 Για να δημιουργηθεί το κλειδί tls-auth το οποίο παρέχει ένα μεγαλύτερο επίπεδο ασφάλειας εκτελούμε τις εντολές:
+
 .......
 openvpn --genkey --secret ta.key
 .......
+
 και προκύπτει το ιδιωτικό ta.key κλειδί.
 
 
